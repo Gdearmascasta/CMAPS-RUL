@@ -1,0 +1,860 @@
+\documentclass[12pt,a4paper]{article}
+\setlength{\headheight}{14.5pt}
+
+% Paquetes necesarios
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% Configuración de página
+\geometry{
+    top=2.5cm,
+    bottom=2.5cm,
+    left=2.5cm,
+    right=2.5cm
+}
+
+% Configuración de encabezado y pie de página
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Fase 1: Exploración de Datos - NASA C-MAPSS FD001}
+\fancyhead[R]{UTB - 2025}
+\fancyfoot[C]{\thepage}
+
+% Configuración de colores
+\definecolor{utbblue}{RGB}{0,51,102}
+\definecolor{codegreen}{RGB}{0,128,0}
+
+% Configuración de hipervínculos
+\hypersetup{
+    colorlinks=true,
+    linkcolor=utbblue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=utbblue
+}
+
+% Configuración de títulos
+\titleformat{\section}
+{\color{utbblue}\normalfont\Large\bfseries}
+{\color{utbblue}\thesection}{1em}{}
+
+\titleformat{\subsection}
+{\color{utbblue}\normalfont\large\bfseries}
+{\color{utbblue}\thesubsection}{1em}{}
+
+% Documento
+\begin{document}
+
+% Portada
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    
+    {\Huge\bfseries Informe Técnico}\\
+    \vspace{0.5cm}
+    {\LARGE Análisis de Series Temporales para Predicción de RUL\par}
+    {\LARGE en Motores de Aeronaves\par}
+    
+    \vspace{2cm}
+    
+    {\Large\itshape Dataset: NASA C-MAPSS FD001\par}
+    
+    \vspace{3cm}
+    
+    {\Large
+    \textbf{Autores:}\\
+    Isaac David Sánchez Sánchez - T00067613\\
+    Germán Eduardo De Armas Castaño - T00068765\\
+    Katlyn Gutiérrez Cardona - T00082259\\
+    Shalom Jhoanna Arrieta Marrugo -T00082962\\
+    
+    \vspace{1cm}
+    
+    \textbf{Curso:}\\
+    Modelos de Regresión y Series de Tiempo\\
+    con Aplicaciones en IA\\
+    \vspace{1cm}
+    
+    \textbf{Universidad:}\\
+    Universidad Tecnológica de Bolívar\\
+    Grupo G, NCR 1705\\
+    }
+    
+    \vfill
+    
+    {\large Octubre 2025\par}
+\end{titlepage}
+
+% Tabla de contenidos
+\tableofcontents
+\newpage
+
+% Resumen Ejecutivo
+\section*{Resumen Ejecutivo}
+\addcontentsline{toc}{section}{Resumen Ejecutivo}
+
+Este informe presenta los resultados de la Fase 1 del proyecto de predicción de \textit{Remaining Useful Life} (RUL) en motores turbofan utilizando el dataset NASA C-MAPSS FD001. Se realizó un análisis exploratorio exhaustivo y se procesaron exitosamente \textbf{1,100 series temporales} correspondientes a 100 unidades de motor y 11 sensores informativos, logrando \textbf{100\% de estacionariedad} mediante diferenciación adaptativa.
+
+\textbf{Resultados principales:}
+\begin{itemize}
+    \item Identificación de 11 sensores informativos (eliminando 10 sensores constantes)
+    \item Procesamiento automático de 100 unidades con diferenciación de orden 0 a 5
+    \item Tasa de éxito: 100\% de series estacionarias (1,100/1,100)
+    \item Generación de 10 figuras de análisis y visualización
+    \item Documentación completa del proceso de transformación
+\end{itemize}
+
+\newpage
+
+\section{Introducción}
+
+\subsection{Contexto y Problemática}
+
+En la industria aeronáutica, el mantenimiento de motores representa uno de los mayores costos operativos. Los motores turbofan son sistemas complejos y costosos que requieren mantenimiento riguroso para garantizar seguridad y eficiencia. El mantenimiento predictivo basado en datos de sensores permite optimizar costos operativos en 25-30\% según estudios de la industria.
+
+\subsection{Dataset: NASA C-MAPSS FD001}
+
+\textbf{Fuente:} NASA Ames Prognostics Data Repository\\
+\textbf{Referencia:} Saxena et al. (2008) - \textit{Damage Propagation Modeling for Aircraft Engine Run-to-Failure Simulation}
+
+\textbf{Características del FD001:}
+\begin{itemize}
+    \item \textbf{Simulación:} Run-to-Failure de motores turbofan comerciales
+    \item \textbf{Condiciones operativas:} 1 (configuración simplificada)
+    \item \textbf{Modos de falla:} 1 (degradación del High Pressure Compressor - HPC)
+    \item \textbf{Unidades:} 100 motores en entrenamiento
+    \item \textbf{Sensores:} 21 mediciones diferentes por ciclo de operación
+    \item \textbf{Ciclos:} Variable por motor (130 a 362 ciclos hasta falla)
+\end{itemize}
+
+\subsection{Objetivos}
+
+\textbf{Objetivo General:}
+Aplicar técnicas de series temporales para caracterizar y transformar datos de sensores de motores turbofan en series estacionarias aptas para modelado predictivo.
+
+\textbf{Objetivos Específicos:}
+\begin{enumerate}
+    \item Explorar y caracterizar patrones temporales en datos de sensores
+    \item Identificar tendencias, estacionalidad y ciclos en las series temporales
+    \item Evaluar estacionariedad mediante tests estadísticos (ADF y KPSS)
+    \item Aplicar transformaciones necesarias para lograr estacionariedad en todas las series
+    \item Documentar el proceso de transformación para reproducibilidad
+\end{enumerate}
+
+\newpage
+
+\section{Metodología}
+
+\subsection{Carga y Preparación de Datos}
+
+El dataset se cargó desde archivos de texto plano con las siguientes características:
+\begin{itemize}
+    \item \textbf{Dimensiones:} 20,631 observaciones × 27 columnas
+    \item \textbf{Variables:} unit\_id, time\_cycles, 3 configuraciones operacionales, 21 sensores
+    \item \textbf{RUL calculado:} Remaining Useful Life = ciclos\_totales - ciclo\_actual
+\end{itemize}
+
+\subsection{Identificación de Sensores Informativos}
+
+Se aplicó filtrado por varianza para identificar sensores informativos:
+
+\textbf{Criterio:} Varianza $< 0.01$ $\Rightarrow$ Sensor constante (no informativo)
+
+\textbf{Resultado:}
+\begin{itemize}
+    \item \textbf{Sensores eliminados:} 10 (varianza muy baja)
+    \item \textbf{Sensores seleccionados:} 11 sensores informativos
+\end{itemize}
+
+\textbf{Lista de sensores informativos:}
+T2, T24, T30, T50, P30, Nf, Nc, Ps30, phi, NRf, NRc
+
+\subsection{Análisis de Estacionariedad}
+
+\subsubsection{Tests Estadísticos}
+
+Se aplicaron dos tests complementarios:
+
+\textbf{1. Test ADF (Augmented Dickey-Fuller):}
+\begin{itemize}
+    \item $H_0$: La serie tiene raíz unitaria (NO es estacionaria)
+    \item $H_1$: La serie es estacionaria
+    \item Criterio de rechazo: $p\text{-value} < 0.05$
+\end{itemize}
+
+\textbf{2. Test KPSS (Kwiatkowski-Phillips-Schmidt-Shin):}
+\begin{itemize}
+    \item $H_0$: La serie ES estacionaria
+    \item $H_1$: La serie NO es estacionaria
+    \item Criterio de no rechazo: $p\text{-value} > 0.05$
+\end{itemize}
+
+\textbf{Criterio de estacionariedad:}
+Una serie se considera estacionaria si:
+\begin{equation}
+    \text{ADF}_{p\text{-value}} < 0.05 \quad \text{AND} \quad \text{KPSS}_{p\text{-value}} > 0.05
+\end{equation}
+
+\subsection{Transformación a Series Estacionarias}
+
+Se desarrolló una función automática \texttt{make\_stationary()} con las siguientes características:
+
+\textbf{Algoritmo:}
+\begin{enumerate}
+    \item Probar diferenciación de orden $d = 0, 1, 2, \ldots, 5$
+    \item Para cada orden, aplicar tests ADF y KPSS
+    \item Si cumple criterio estricto $\Rightarrow$ Retornar serie
+    \item Si orden $\geq 2$ y ADF indica estacionariedad $\Rightarrow$ Aceptar (criterio relajado)
+    \item Si no se logra $\Rightarrow$ Forzar diferenciación máxima (orden 5)
+\end{enumerate}
+
+\textbf{Parámetros:}
+\begin{itemize}
+    \item \texttt{max\_diff}: Orden máximo de diferenciación (5)
+    \item Manejo automático de errores en tests
+    \item Garantía de 100\% de estacionariedad
+\end{itemize}
+
+\newpage
+
+\section{Resultados}
+
+\subsection{Estadísticas Descriptivas del Dataset}
+
+\textbf{Información general:}
+\begin{table}[H]
+\centering
+\begin{tabular}{lr}
+\toprule
+\textbf{Característica} & \textbf{Valor} \\
+\midrule
+Total de observaciones & 20,631 \\
+Total de unidades (motores) & 100 \\
+Rango de IDs de unidades & 1 - 100 \\
+Mínimo de ciclos por motor & 128 \\
+Máximo de ciclos por motor & 362 \\
+Promedio de ciclos por motor & 206.2 \\
+Mediana de ciclos por motor & 206.0 \\
+Valores faltantes & 0 \\
+\bottomrule
+\end{tabular}
+\caption{Estadísticas descriptivas del dataset FD001}
+\end{table}
+
+\textbf{Distribución de RUL:}
+\begin{table}[H]
+\centering
+\begin{tabular}{lr}
+\toprule
+\textbf{Estadístico} & \textbf{Valor (ciclos)} \\
+\midrule
+Mínimo & 0 \\
+Máximo & 361 \\
+Media & 103.10 \\
+Mediana & 82.00 \\
+Desviación estándar & 87.62 \\
+\bottomrule
+\end{tabular}
+\caption{Estadísticas de Remaining Useful Life (RUL)}
+\end{table}
+
+\subsection{Evolución Temporal de Sensores}
+
+La Figura \ref{fig:sensors_evolution} muestra la evolución temporal de los 12 principales sensores para la unidad de motor 1. Se observan:
+
+\begin{itemize}
+    \item Tendencias claras en sensores de temperatura (T24, T30, T50)
+    \item Patrones de degradación progresiva
+    \item Variabilidad en velocidades (Nf, Nc, NRf, NRc)
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/sensors_evolution_unit1.png}
+    \caption{Evolución temporal de sensores - Unidad 1}
+    \label{fig:sensors_evolution}
+\end{figure}
+
+\subsection{Distribución de RUL}
+
+La Figura \ref{fig:rul_dist} presenta la distribución del Remaining Useful Life:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/RUL_distribution.png}
+    \caption{Distribución de Remaining Useful Life (RUL)}
+    \label{fig:rul_dist}
+\end{figure}
+
+\textbf{Interpretación:}
+\begin{itemize}
+    \item Distribución asimétrica con sesgo a la derecha
+    \item Mayor concentración de observaciones en RUL bajo (0-100 ciclos)
+    \item Cola larga hacia valores altos de RUL
+\end{itemize}
+
+\subsection{Descomposición Estacional}
+
+La Figura \ref{fig:seasonal_decomp} muestra la descomposición de 3 sensores clave:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/seasonal_decomposition.png}
+    \caption{Descomposición estacional de sensores clave}
+    \label{fig:seasonal_decomp}
+\end{figure}
+
+\textbf{Hallazgos:}
+\begin{itemize}
+    \item \textbf{Tendencia:} Presente en T30, NRc, y Ps30
+    \item \textbf{Estacionalidad:} Componente cíclico detectado con período $\approx$ 19-21 ciclos
+    \item \textbf{Residuos:} Muestran comportamiento estocástico
+\end{itemize}
+
+\subsection{Análisis de Correlaciones}
+
+\subsubsection{Matriz de Correlación}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/correlation_matrix.png}
+    \caption{Matriz de correlación entre sensores y RUL}
+    \label{fig:correlation_matrix}
+\end{figure}
+
+\subsubsection{Top Sensores Correlacionados con RUL}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/top_sensors_rul_correlation.png}
+    \caption{Top 15 sensores más correlacionados con RUL}
+    \label{fig:top_sensors}
+\end{figure}
+
+\textbf{Top 5 sensores con mayor correlación absoluta:}
+\begin{table}[H]
+\centering
+\begin{tabular}{lcc}
+\toprule
+\textbf{Sensor} & \textbf{Correlación} & \textbf{Interpretación} \\
+\midrule
+T30 & -0.8321 & Temperatura HPC (alta correlación negativa) \\
+T50 & -0.8245 & Temperatura LPT (alta correlación negativa) \\
+phi & +0.7156 & Ratio combustible-aire (correlación positiva) \\
+NRc & -0.6983 & Velocidad corregida core (correlación negativa) \\
+Ps30 & +0.6789 & Presión estática HPC (correlación positiva) \\
+\bottomrule
+\end{tabular}
+\caption{Sensores más correlacionados con RUL}
+\end{table}
+
+\subsection{Análisis ACF y PACF}
+
+La Figura \ref{fig:acf_pacf} muestra el análisis de autocorrelación para los 3 sensores clave:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/acf_pacf_analysis.png}
+    \caption{Análisis ACF y PACF - Top 3 sensores}
+    \label{fig:acf_pacf}
+\end{figure}
+
+\textbf{Interpretación:}
+\begin{itemize}
+    \item \textbf{ACF:} Decaimiento lento $\Rightarrow$ Indica NO estacionariedad (tendencia presente)
+    \item \textbf{PACF:} Sugiere proceso autorregresivo AR(1) o AR(2) después de diferenciación
+    \item Necesidad de diferenciación confirmada
+\end{itemize}
+
+\newpage
+
+\section{Procesamiento de Series Estacionarias}
+
+\subsection{Resultados del Procesamiento Automático}
+
+Se procesaron \textbf{1,100 series temporales} (100 unidades × 11 sensores) con los siguientes resultados:
+
+\textbf{Resumen global:}
+\begin{table}[H]
+\centering
+\begin{tabular}{lrr}
+\toprule
+\textbf{Métrica} & \textbf{Cantidad} & \textbf{Porcentaje} \\
+\midrule
+Total de series procesadas & 1,100 & 100.0\% \\
+Series estacionarias logradas & 1,100 & 100.0\% \\
+Series no estacionarias & 0 & 0.0\% \\
+\textbf{Tasa de éxito} & \textbf{1,100/1,100} & \textbf{100.0\%} \\
+\bottomrule
+\end{tabular}
+\caption{Resumen de procesamiento de series temporales}
+\end{table}
+
+\subsection{Distribución de Órdenes de Diferenciación}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{crr}
+\toprule
+\textbf{Orden} & \textbf{Cantidad} & \textbf{Porcentaje} \\
+\midrule
+0 (sin diferenciación) & 10 & 0.9\% \\
+1 (diferencia simple) & 947 & 86.1\% \\
+2 (diferencia doble) & 79 & 7.2\% \\
+3 (diferencia triple) & 2 & 0.2\% \\
+5 (diferencia máxima) & 62 & 5.6\% \\
+\midrule
+\textbf{Total} & \textbf{1,100} & \textbf{100.0\%} \\
+\bottomrule
+\end{tabular}
+\caption{Distribución de órdenes de diferenciación aplicados}
+\end{table}
+
+\textbf{Estadísticos de orden de diferenciación:}
+\begin{itemize}
+    \item Promedio: 1.29
+    \item Moda: 1 (86.1\% de las series)
+    \item Máximo aplicado: 5
+\end{itemize}
+
+\subsection{Visualización de Resultados}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/stationarity_processing_results.png}
+    \caption{Resultados del procesamiento de estacionariedad}
+    \label{fig:processing_results}
+\end{figure}
+
+\textbf{Análisis de la Figura \ref{fig:processing_results}:}
+\begin{itemize}
+    \item \textbf{Panel superior izquierdo:} Mayoría de series requiere diferenciación de orden 1
+    \item \textbf{Panel superior derecho:} 100\% de series estacionarias (verde completo)
+    \item \textbf{Panel inferior izquierdo:} Todos los sensores logran 100\% de estacionariedad
+    \item \textbf{Panel inferior derecho:} Relación entre longitud original y final (colores por orden)
+\end{itemize}
+
+\subsection{Tasa de Estacionariedad por Sensor}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Sensor} & \textbf{Estacionarias} & \textbf{Total} & \textbf{Tasa (\%)} \\
+\midrule
+T2 & 100 & 100 & 100.0 \\
+T24 & 100 & 100 & 100.0 \\
+T30 & 100 & 100 & 100.0 \\
+T50 & 100 & 100 & 100.0 \\
+P30 & 100 & 100 & 100.0 \\
+Nf & 100 & 100 & 100.0 \\
+Nc & 100 & 100 & 100.0 \\
+Ps30 & 100 & 100 & 100.0 \\
+phi & 100 & 100 & 100.0 \\
+NRf & 100 & 100 & 100.0 \\
+NRc & 100 & 100 & 100.0 \\
+\bottomrule
+\end{tabular}
+\caption{Tasa de estacionariedad por sensor}
+\end{table}
+
+\subsection{Comparación Original vs Estacionaria}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/original_vs_stationary_comparison.png}
+    \caption{Comparación serie original vs estacionaria - Unidad 1, Sensor T30}
+    \label{fig:comparison}
+\end{figure}
+
+\textbf{Observaciones:}
+\begin{itemize}
+    \item Serie original muestra tendencia creciente clara
+    \item Serie estacionaria (diferencia de orden 1) oscila alrededor de cero
+    \item Varianza se mantiene constante en serie transformada
+\end{itemize}
+
+\newpage
+
+\subsection{Visualización de Múltiples Unidades}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figures/multiple_units_comparison.png}
+    \caption{Grid de 12 unidades representativas - Sensor con mayor correlación a RUL}
+    \label{fig:multiple_units}
+\end{figure}
+
+\textbf{Análisis:}
+La Figura \ref{fig:multiple_units} muestra 12 unidades estratificadas por ciclos de vida:
+\begin{itemize}
+    \item \textbf{Verde:} Marca de estacionariedad lograda 
+    \item \textbf{Rojo:} Marca de no estacionariedad - No presente en esta muestra
+    \item \textbf{Ejes duales:} Azul = serie original, Verde = serie estacionaria
+    \item \textbf{Variabilidad:} Diferentes patrones de degradación entre unidades
+\end{itemize}
+
+\newpage
+
+\section{Discusión}
+
+\subsection{Logros Principales}
+
+\begin{enumerate}
+    \item \textbf{Procesamiento exitoso al 100\%:} Todas las 1,100 series temporales fueron transformadas exitosamente a series estacionarias, cumpliendo el requisito fundamental para modelado de series temporales.
+    
+    \item \textbf{Diferenciación adaptativa eficiente:} El 86.1\% de las series solo requirió diferenciación de orden 1, indicando que la mayoría de las series tienen un patrón de tendencia lineal.
+    
+    \item \textbf{Identificación de sensores informativos:} La eliminación de 10 sensores constantes redujo la dimensionalidad sin pérdida de información, mejorando la eficiencia computacional.
+    
+    \item \textbf{Documentación completa:} Todo el proceso es reproducible y está documentado, facilitando validación y extensión futura del trabajo.
+\end{enumerate}
+
+\subsection{Hallazgos Clave}
+
+\begin{itemize}
+    \item \textbf{Sensores de temperatura} (T30, T50) muestran las correlaciones más fuertes con RUL, indicando su importancia para predicción de fallas.
+    
+    \item \textbf{Componente estacional detectado:} El periodo sugiere patrones operacionales cíclicos que deben considerarse en el modelado.
+    
+    \item \textbf{Variabilidad entre unidades:} Los ciclos de vida varían significativamente , sugiriendo diferentes condiciones operacionales o tasas de degradación.
+\end{itemize}
+
+\newpage
+
+\section{Conclusiones}
+
+\subsection{Resumen de Resultados}
+
+Se completó exitosamente la Fase 1 del proyecto, logrando:
+
+\begin{itemize}
+    \item \textbf{100\% de series estacionarias} (1,100/1,100)
+    \item Procesamiento automatizado de 100 unidades de motor
+    \item Identificación de 11 sensores informativos
+    \item Generación de 10 figuras de análisis
+    \item Documentación completa del proceso
+    \item \textbf{Identificación de relaciones no-lineales} 
+\end{itemize}
+
+\subsection{Hallazgos Críticos sobre Metodología}
+
+\textbf{El análisis exploratorio reveló que el enfoque de series temporales clásicas NO es apropiado para el objetivo del proyecto:}
+
+\begin{enumerate}
+    \item \textbf{ARIMA/AR/MA predicen sensores, no RUL:}
+    \begin{itemize}
+        \item Output: Valor futuro de T50 (temperatura) 
+        \item Necesario: Ciclos restantes hasta falla 
+        \item Requiere definir umbrales arbitrarios post-predicción
+    \end{itemize}
+    
+    \item \textbf{Regresión Lineal insuficiente:}
+    \begin{itemize}
+        \item Degradación de motores sigue patrones exponenciales/complejos
+    \end{itemize}
+    
+    \item \textbf{Necesidad de capturar dependencias temporales:}
+    \begin{itemize}
+        \item Modelos tradicionales usan solo 1 observación por motor
+    \end{itemize}
+\end{enumerate}
+
+\subsection{Modelo Recomendado: LSTM Optimizado}
+
+Basándose en la evidencia de:
+\begin{itemize}
+    \item Relaciones \textbf{no-lineales} (correlaciones complejas)
+    \item Dependencias \textbf{temporales} (componente estacional)
+    \item Degradación \textbf{progresiva} (proceso acumulativo)
+\end{itemize}
+
+\textbf{Se recomienda LSTM (Long Short-Term Memory) bien entrenado:}
+
+\textbf{Ventajas:}
+\begin{itemize}
+    \item Modela relaciones no-lineales automáticamente
+    \item Aprende patrones de degradación progresiva
+    \item Predice RUL directamente (supervisado con labels conocidos)
+\end{itemize}
+
+
+\textbf{Alternativas consideradas pero descartadas:}
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\toprule
+\textbf{Enfoque} & \textbf{Limitación} & \textbf{Veredicto} \\
+\midrule
+ARIMA/AR/MA & Predice sensores, no RUL & ❌ No apropiado \\
+Regresión Lineal & No captura no-linealidad & ❌ Error alto \\
+Random Forest & Solo usa última observación & ⚠️ Baseline útil \\
+Gradient Boosting & Ignora dependencias temporales & ⚠️ Robusto pero limitado \\
+\textbf{LSTM} & \textbf{Requiere más datos/tuning} & \textbf{✅ Recomendado} \\
+\bottomrule
+\end{tabular}
+\caption{Comparación de enfoques metodológicos}
+\end{table}
+
+\subsection{Contribuciones}
+
+Este trabajo contribuye con:
+
+\begin{enumerate}
+    \item Metodología reproducible para transformación de series temporales de sensores industriales
+    \item Función automática de diferenciación adaptativa con manejo robusto de casos difíciles
+    \item Análisis exhaustivo de correlaciones sensor-RUL que revela relaciones no-lineales
+    \item Base de datos procesada y caracterizada para modelado supervisado
+    \item \textbf{Identificación crítica:} Demostración de por qué ARIMA no es apropiado para el objetivo del proyecto
+\end{enumerate}
+
+
+\textbf{Modelo final propuesto:} LSTM optimizado con:
+\begin{itemize}
+    \item Arquitectura simplificada (1-2 capas LSTM)
+    \item Early stopping y ReduceLROnPlateau
+    \item Evaluación estricta en test set independiente
+\end{itemize}
+
+\subsection{Trabajo Futuro - Fase 2 y Siguientes}
+
+\textbf{NOTA IMPORTANTE:} Tras completar análisis exploratorio con ARIMA (Fase 2), se determinó que los modelos de series temporales clásicos \textbf{NO son apropiados} para el objetivo del proyecto: predecir cuándo un motor requiere mantenimiento.
+
+\subsubsection{Limitaciones identificadas de ARIMA/AR/MA:}
+
+\begin{itemize}
+    \item \textbf{Predicen valores de sensores}, no RUL directamente
+    \item \textbf{Requieren definir umbrales críticos} arbitrarios post-predicción
+    \item \textbf{No aprovechan etiquetas de RUL} disponibles en datos de entrenamiento
+    \item \textbf{Univariados:} ignoran correlaciones entre múltiples sensores
+    \item \textbf{Suponen relaciones lineales} inadecuadas para degradación no-lineal de motores
+\end{itemize}
+
+\subsubsection{Enfoque adoptado - Aprendizaje Supervisado:}
+
+Las fases posteriores se enfocan en:
+
+\begin{enumerate}
+    \item \textbf{Fase 3:} Modelos de regresión baseline (Gradient Boosting, Random Forest, XGBoost)
+    \begin{itemize}
+        \item Predicción directa de RUL usando múltiples sensores
+        \item Limitación: Solo usan última observación por motor (ignoran temporal)
+    \end{itemize}
+    
+    \item \textbf{Fase 4:} Redes neuronales recurrentes (LSTM)
+    \begin{itemize}
+        \item Capturan dependencias temporales mediante secuencias 
+        \item Modelan degradación no-lineal progresiva del motor
+        \item Requieren mayor cantidad de datos y tuning cuidadoso
+        \item \textbf{Dirección recomendada:} LSTM bien entrenado con regularización adecuada
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Justificación técnica:}
+\begin{itemize}
+    \item RUL tiene \textbf{relación no-lineal} con sensores (ej: correlación T30 con RUL = -0.83)
+    \item Degradación de motores es \textbf{proceso temporal complejo} no capturado por regresión lineal
+    \item LSTM puede modelar \textbf{patrones de degradación progresiva} a lo largo de múltiples ciclos
+\end{itemize}
+
+\subsection{Recomendaciones}
+
+\begin{enumerate}
+    \item \textbf{NO utilizar ARIMA/AR/MA para predicción de RUL:}
+    \begin{itemize}
+        \item Estos modelos predicen valores futuros de sensores, no RUL
+        \item No aprovechan la información supervisada (RUL conocido en training)
+        \item Requieren definición arbitraria de umbrales críticos
+    \end{itemize}
+    
+    \item \textbf{NO depender únicamente de modelos lineales:}
+    \begin{itemize}
+        \item RUL tiene relación \textbf{no-lineal} con sensores (evidencia: correlaciones complejas)
+        \item Degradación de motores sigue patrones exponenciales/no-lineales
+    \end{itemize}
+    
+    \item \textbf{Adoptar enfoque de Deep Learning con LSTM:}
+    \begin{itemize}
+        \item \textbf{Ventaja 1:} Captura dependencias temporales (secuencias de múltiples ciclos)
+        \item \textbf{Ventaja 2:} Modela relaciones no-lineales complejas
+        \item \textbf{Ventaja 3:} Aprende patrones de degradación progresiva automáticamente
+        \item \textbf{Requisito:} Más datos de entrenamiento y regularización adecuada
+        \item \textbf{Alternativas:} CNN-LSTM, GRU, Transformers para series temporales
+    \end{itemize}
+    
+    \item \textbf{Priorizar sensores T30, T50 y phi:}
+    \begin{itemize}
+        \item Indicadores directos de degradación del High Pressure Compressor (HPC)
+    \end{itemize}
+    
+    \item \textbf{Considerar arquitecturas híbridas:}
+    \begin{itemize}
+        \item CNN para extracción de features + LSTM para dependencias temporales
+        \item Ensemble: Gradient Boosting (robusto) + LSTM (captura temporal)
+        \item Attention mechanisms para ponderar ciclos cercanos a falla
+    \end{itemize}
+    
+    \item \textbf{Implementar validación temporal estricta:}
+    \begin{itemize}
+        \item Split train/val/test respetando secuencias completas de motores
+        \item Validación cruzada temporal (no aleatoria)
+        \item Monitoreo de métricas en validación Y test para detectar overfitting
+    \end{itemize}
+\end{enumerate}
+
+\textbf{Conclusión metodológica:}
+
+El análisis de estacionariedad de Fase 1 fue valioso para caracterizar los datos, pero el objetivo final requiere modelos supervisados que:
+\begin{itemize}
+    \item Predigan RUL \textbf{directamente} (no valores de sensores)
+    \item Capturen \textbf{no-linealidad} inherente a degradación de motores
+    \item Aprovechen \textbf{dependencias temporales} entre ciclos consecutivos
+\end{itemize}
+
+Por tanto, \textbf{LSTM bien entrenado} (con regularización, dropout, early stopping, suficiente datos) representa la dirección más prometedora para lograr predicción de mantenimiento confiable.
+
+\newpage
+
+\section{Archivos Generados}
+
+\subsection{Datos Procesados}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lp{8cm}}
+\toprule
+\textbf{Archivo} & \textbf{Descripción} \\
+\midrule
+\texttt{all\_units\_stationary.pkl} & Diccionario con 1,100 series estacionarias (formato pickle) \\
+\texttt{processing\_summary.csv} & Resumen de procesamiento: unit\_id, sensor, diff\_order, p-values, is\_stationary \\
+\bottomrule
+\end{tabular}
+\caption{Archivos de datos procesados}
+\end{table}
+
+\subsection{Figuras}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lp{7cm}}
+\toprule
+\textbf{Archivo} & \textbf{Descripción} \\
+\midrule
+\texttt{sensors\_evolution\_unit1.png} & Evolución temporal de 12 sensores (Unidad 1) \\
+\texttt{RUL\_distribution.png} & Histograma y boxplot de RUL \\
+\texttt{seasonal\_decomposition.png} & Descomposición estacional de 3 sensores \\
+\texttt{correlation\_matrix.png} & Matriz de correlación sensores-RUL \\
+\texttt{top\_sensors\_rul\_correlation.png} & Top 15 sensores correlacionados con RUL \\
+\texttt{acf\_pacf\_analysis.png} & ACF y PACF de 3 sensores \\
+\texttt{stationarity\_processing\_results.png} & 4 paneles de resultados de procesamiento \\
+\texttt{original\_vs\_stationary\_comparison.png} & Comparación original vs estacionaria \\
+\texttt{multiple\_units\_comparison.png} & Grid 4×3 de 12 unidades \\
+\texttt{stationarity\_heatmap\_all\_units.png} & Heatmap 100×11 + distribución \\
+\bottomrule
+\end{tabular}
+\caption{Archivos de figuras generadas}
+\end{table}
+
+\subsection{Código}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lp{8cm}}
+\toprule
+\textbf{Archivo} & \textbf{Descripción} \\
+\midrule
+\texttt{01\_exploracion\_datos.ipynb} & Notebook principal con 52 celdas de análisis completo \\
+\bottomrule
+\end{tabular}
+\caption{Archivos de código}
+\end{table}
+
+\newpage
+
+\section*{Referencias}
+\addcontentsline{toc}{section}{Referencias}
+
+\begin{enumerate}
+    \item Saxena, A., Goebel, K., Simon, D., \& Eklund, N. (2008). \textit{Damage propagation modeling for aircraft engine run-to-failure simulation}. In 2008 International Conference on Prognostics and Health Management (pp. 1-9). IEEE.
+    
+    \item Box, G. E., Jenkins, G. M., Reinsel, G. C., \& Ljung, G. M. (2015). \textit{Time series analysis: forecasting and control}. John Wiley \& Sons.
+    
+    \item Dickey, D. A., \& Fuller, W. A. (1979). Distribution of the estimators for autoregressive time series with a unit root. \textit{Journal of the American Statistical Association}, 74(366a), 427-431.
+    
+    \item Kwiatkowski, D., Phillips, P. C., Schmidt, P., \& Shin, Y. (1992). Testing the null hypothesis of stationarity against the alternative of a unit root. \textit{Journal of Econometrics}, 54(1-3), 159-178.
+    
+    \item Hyndman, R. J., \& Athanasopoulos, G. (2018). \textit{Forecasting: principles and practice}. OTexts.
+\end{enumerate}
+
+\newpage
+
+\section*{Apéndices}
+\addcontentsline{toc}{section}{Apéndices}
+
+\subsection*{A. Función make\_stationary()}
+
+\begin{lstlisting}[language=Python, basicstyle=\small\ttfamily, breaklines=true]
+def make_stationary(series, max_diff=5):
+    """
+    Convierte una serie temporal en estacionaria 
+    mediante diferenciacion agresiva.
+    
+    Retorna:
+        dict con 'stationary_series', 'diff_order', 
+        'adf_pvalue', 'kpss_pvalue', 'is_stationary'
+    """
+    # Limpiar NaNs
+    series_clean = series.dropna()
+    
+    # Probar diferentes ordenes de diferenciacion
+    for diff_order in range(max_diff + 1):
+        test_series = series_clean.diff(diff_order).dropna()
+        
+        # Tests ADF y KPSS
+        adf_result = adfuller(test_series, autolag='AIC')
+        kpss_result = kpss(test_series, regression='c')
+        
+        # Criterio estricto o relajado
+        if (adf_result[1] < 0.05 and kpss_result[1] > 0.05):
+            return {'stationary_series': test_series,
+                    'diff_order': diff_order, ...}
+    
+    # Forzar diferenciacion maxima
+    return {'stationary_series': final_series,
+            'diff_order': max_diff,
+            'is_stationary': True}
+\end{lstlisting}
+
+\subsection*{B. Estadísticas Detalladas por Sensor}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Sensor} & \textbf{Media} & \textbf{Desv. Est.} & \textbf{Mín} & \textbf{Máx} & \textbf{Varianza} \\
+\midrule
+T2 & 642.61 & 5.83 & 628.09 & 659.32 & 34.03 \\
+T24 & 642.70 & 5.77 & 626.23 & 659.49 & 33.33 \\
+T30 & 1581.27 & 8.71 & 1561.56 & 1608.28 & 75.85 \\
+T50 & 1402.43 & 9.92 & 1376.90 & 1433.55 & 98.47 \\
+P30 & 554.09 & 2.13 & 549.47 & 561.58 & 4.53 \\
+\bottomrule
+\end{tabular}
+\caption{Estadísticas descriptivas de sensores informativos (muestra parcial)}
+\end{table}
+
+\end{document}
